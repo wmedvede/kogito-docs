@@ -1,1 +1,254 @@
-= Orchestrating third party services with OAuth2 authentication
+Orchestrating third party services with OAuth2 authentication
+=============================================================
+v1.0, 06-08-2022
+:compat-mode!:
+// Metadata:
+:description: Authentication support for OpenAPI services
+:keywords: kogito, workflow, serverless, authentication
+// Referenced documentation pages.
+:orchestration-of-opnapi-based-services: xref:service-orchestration/orchestration-of-opnapi-based-services.adoc
+:configuring-openapi-services-endpoints: xref:service-orchestration/configuring-openapi-services-endpoints.adoc
+:authentication-support-for-openapi-services: xref:security/authention-support-for-openapi-services.adoc
+:kogito-examples-repository: https://github.com/wmedvede/kogito-examples
+:serverless-workflow-oauth2-orchestration-quarkus-example: https://github.com/wmedvede/kogito-examples/tree/KOGITO-7263/kogito-quarkus-examples/serverless-workflow-oauth2-orchestration-quarkus
+:serverless-workflow-oauth2-orchestration-quarkus-example-workflow-definition: https://github.com/wmedvede/kogito-examples/blob/KOGITO-7263/kogito-quarkus-examples/serverless-workflow-oauth2-orchestration-quarkus/currency-exchange-workflow/src/main/resources/currency-exchange-workflow.sw.json
+
+
+This guide shows how to implement and configure a Serverless Workflow that orchestrate the interaction with an Oauth2 secured REST service.
+
+== Prerequisites
+
+While this guide is based on an end-to-end example that you can clone and have full access, we strongly recommend that you read the following guides before to proceed:
+
+* {orchestration-of-opnapi-based-services}[Orchestration of OpenAPI based services]
+* {configuring-openapi-services-endpoints}[Configuring OpenAPI services endpoints in different environments]
+* {authentication-support-for-openapi-services}[Authentication support for OpenAPI services] (Required)
+
+== Introduction
+
+Imagine that you have set of applications that must resolve currency exchange calculations as part of their regular operations. For that, you need an accurate source of information to get the different exchange rates.
+
+Fortunately, your company has a commercial agreement with Acme Financial Services, and those rates can be queried using their Oauth2 secured services. Additionally, as confidential client, you were granted with proper credentials to access their services as part of the agreement.
+
+However, you don't want to expose that services to your applications...
+
+== Solution
+
+Implement a Serverless Workflow that resolves:
+
+* The orchestration with Acme's services and the currency exchange calculation.
+* The authentication requirements to access that service.
+* Potential vendor lock-in problems if you want to change the provider in the future.
+* Domain specific validations, optimizations, etc.
+
+The following example {serverless-workflow-oauth2-orchestration-quarkus-example}[serverless-workflow-oauth2-orchestration-quarkus] contains the solution.
+
+[NOTE]
+====
+To get the source the code, or execute the example locally, clone this repository {kogito-examples-repository}[kogito-examples] and go to the `serverless-workflow-oauth2-orchestration-quarkus` directory.
+====
+
+== The currency-exchange-workflow
+
+=== Architecture
+
+In the following diagram you can see a simplified view of the architecture of the example.
+
+image::security/orchestrating-third-party-services-with-oauth2/architecture-diagram3.png[]
+
+Interactions form the architecture point of view:
+
+. The application sends a request to calculate the currency exchange.
+. The flow executes the necessary validations and determine if the `acme-financial-service` must be queried.
+. Case yes, an authentication request is sent to `acme-oauth2-server` using the credentials provided by Acme.
+. An access token is returned by the `acme-oauth2-server`.
+. A request is sent to the `acme-financial-service` and the access token is sent as part of the call.
+. The access token is validated.
+. A successful validation enables the query execution, results are sent o the flow.
+. The `currency-exchange-workflow` receives the exchange rate, perform the calculations, and returns the result.
+
+[NOTE]
+====
+The steps related to the Oauth2 server interaction might vary depending on the authorization flow to use.
+However, all these interactions are transparent to the serverless workflow, and you only have to configure a proper OidcClient according to that flow and the target Oauth2 server. TODO, link?
+====
+
+=== Workflow diagram
+
+The figure below shows the `currency-exchange-workflow` diagram:
+
+image::security/orchestrating-third-party-services-with-oauth2/currency-exchange-workflow-diagram.png[]
+
+Logic implemented by the `currency-exchange-workflow`:
+
+. Input data is validated, and the cache is queried in case optimizations can be done.
+. Check the validation results.
+.. If validation was successful, but no exchange rates information is cached, transition to (3).
+.. If validation was successful, but exchange rates information is cached, transition to (4).
+.. If validation failed, no transition, the workflow finalizes with the error execution status.
+. Call `acme-financial-service` to get the exchange rate.
+.. If the call was successful, transition to (4).
+.. If the call failed, transition to (5).
+. Calculate the currency exchange and transition to (5).
+. Set the successful execution status and finalize the workflow execution.
+. Set the error execution status and finalize the workflow execution.
+
+=== Workflow definition
+
+Now that you are familiar with the `currency-exchange-workflow`, we recommend that you take some time to visit the {serverless-workflow-oauth2-orchestration-quarkus-example-workflow-definition}[definition].
+After this, let's continue the journey by showing the most relevant states and configurations.
+
+.Click to see the definition here!
+[%collapsible]
+====
+[source, json]
+----
+{
+  "id": "currency_exchange_workflow",
+  "version": "1.0",
+  "name": "Currency Exchange SW",
+  "dataInputSchema": "currency-exchange-workflow-schema.json",
+  "start": "ValidateAndInitialize",
+  "errors": [
+    {
+      "name": "service_error",
+      "code": "java.lang.Exception"
+    }
+  ],
+  "functions": [
+    {
+      "name": "validateAndInitialize",
+      "type": "custom",
+      "operation": "service:org.kie.kogito.examples.ExchangeWorkflowHelper::validateAndInitialize"
+    },
+    {
+      "name": "getExchangeRateFromService",
+      "type": "rest",
+      "operation": "specs/acme-financial-service.yml#exchangeRate"
+    },
+    {
+      "name": "calculateExchange",
+      "type": "custom",
+      "operation": "service:org.kie.kogito.examples.ExchangeWorkflowHelper::calculateExchange"
+    }
+  ],
+  "states": [
+    {
+      "name": "ValidateAndInitialize",
+      "type": "operation",
+      "actions": [
+        {
+          "name": "validateAndInitializeAction",
+          "functionRef": {
+            "refName": "validateAndInitialize",
+            "arguments": {
+              "currencyFrom": "${ .currencyFrom }",
+              "currencyTo": "${ .currencyTo }",
+              "amount": "${ .amount }",
+              "exchangeDate": "${ .exchangeDate }"
+            }
+          }
+        }
+      ],
+      "transition": "CheckValidateAndInitialize"
+    },
+    {
+      "name": "CheckValidateAndInitialize",
+      "type": "switch",
+      "dataConditions": [
+        {
+          "condition": "${ .executionStatus == \"ERROR\" }",
+          "end": true
+        },
+        {
+          "condition": "${ .executionStatus == null and .exchangeRate == null }",
+          "transition": "GetExchangeRateFromService"
+        }
+      ],
+      "defaultCondition": {
+        "transition": "CalculateExchange"
+      }
+    },
+    {
+      "name": "GetExchangeRateFromService",
+      "type": "operation",
+      "actions": [
+        {
+          "name": "getExchangeRateFromServiceAction",
+          "functionRef": {
+            "refName": "getExchangeRateFromService",
+            "arguments": {
+              "currencyFrom": "${ .currencyFrom }",
+              "currencyTo": "${ .currencyTo }",
+              "exchangeDate": "${ .exchangeDate }"
+            }
+          }
+        }
+      ],
+      "transition": "CalculateExchange",
+      "onErrors": [
+        {
+          "errorRef": "service_error",
+          "transition": "EndWithError"
+        }
+      ]
+    },
+    {
+      "name": "CalculateExchange",
+      "type": "operation",
+      "actions": [
+        {
+          "name": "calculateExchangeAction",
+          "functionRef": {
+            "refName": "calculateExchange",
+            "arguments": {
+              "currencyFrom": "${ .currencyFrom }",
+              "currencyTo": "${ .currencyTo }",
+              "exchangeDate": "${ .exchangeDate }",
+              "amount": "${ .amount }",
+              "exchangeRate": "${ .exchangeRate }"
+            }
+          },
+          "actionDataFilter": {
+            "results": "${ .value }",
+            "toStateData": "${ .result }"
+          }
+        }
+      ],
+      "transition": "EndSuccessful"
+    },
+    {
+      "name": "EndWithError",
+      "type": "inject",
+      "data": {
+        "executionStatus": "ERROR",
+        "executionStatusMessage": "Execution failed: The acme-financial-service invocation has failed, check that the service is running and that you have configured the OAuth2 client properly"
+      },
+      "end": true
+    },
+    {
+      "name": "EndSuccessful",
+      "type": "inject",
+      "data": {
+        "executionStatus": "OK",
+        "executionStatusMessage": "Execution successful"
+      },
+      "end": true
+    }
+  ]
+}
+----
+====
+
+==== How is the Serverless Workflow linked to the acme-financial-service?
+
+
+=== How do the Serverless Workflow call the acme-financial-service operations?
+
+
+=== How can I know the particular security configurations that are required to access the acme-financial-service?
+
+
+=== Which security configurations do we have for this example?
+
+
