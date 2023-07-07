@@ -1,4 +1,4 @@
-= Core Concepts
+= Introduction
 :compat-mode!:
 // Metadata:
 :description: Job Service to control timeouts in {product_name}
@@ -12,26 +12,36 @@
 :quarkus_infinispan_client_reference_url: https://quarkus.io/guides/infinispan-client-reference
 :quarkus_config_reference_url: https://quarkus.io/guides/config-reference
 
-The Job Service is the {product_name}'s architecture supporting service, responsible for controlling the execution of time-triggered actions, also known as jobs.
+The Job Service facilitates the scheduled execution of tasks in a cloud environment. These tasks are implemented by different independent services, and can be started by using any of the Job Service supported interaction modes, based on Http calls or Knative Events delivery.
 
-A job execution is a callback to the {product_name} runtime application, and can be configured in different ways as described in the <<job-service-communication, communication>> section.
+To schedule the execution of a task you must create a Job, that is configured with the following information:
 
-All time-base states that you can use in a workflow, are handled by the interaction between the job-service-addon, that you have configured in your project, and the Jobs Service.
+* `Schedule`: the job triggering periodicity.
+* `Recipient`: the entity that is called on the job execution for the given interaction mode, and  receives the execution parameters.
 
-For example, every time the workflow execution reaches a state with a configured timeout, a corresponding job is created at the Jobs Service, and when the timeout is met, the callback is executed to notify the workflow.
+image::job-services/Job-Service-Generic-Diagram.png[]
 
+
+== Integration with the Workflows
+
+In the context of the {product_name}s, the Job Service is responsible for controlling the execution of the time-triggered actions. And thus, all the time-base states that you can use in a workflow, are handled by the interaction between the workflow and the Job Service.
+
+For example, every time the workflow execution reaches a state with a configured timeout, a corresponding job is created in the Job Service, and when the timeout is met, a http callback is executed to notify the workflow.
 
 image::job-services/Time-Based-States-And-Job-Service-Interaction.png[]
 
+To setup this integration you can use different communication alternatives, that must be configured by combining the Job Service and the Quarkus Workflow Project configurations.
 
 [NOTE]
 ====
 If the application is not configured to use the Job Service, all time-based actions will use an in-memory implementation of that service.
 However, this setup must not be used in production, since every time the application is restarted, all the timers are lost.
-This last is not suited for serverless architectures, where the applications might scale to zero at any time.
+This last is not suited for serverless architectures, where the applications might scale to zero at any time, etc.
 ====
 
-Since the main goal of the Job Service is to work only with active jobs, such as the scheduled jobs that need to be executed, when a job reaches a final state, it is removed from the Job Service.
+== Jobs life-span
+
+Since the main goal of the Job Service is to work with the active jobs, such as the scheduled jobs that needs to be executed, when a job reaches a final state, it is removed from the Job Service.
 However, in cases where you want to keep the information about the jobs in a permanent repository, you can configure the Job Service to produce status change events, that can be collected by the {product_name} `Data
 Index Service`, where they can be indexed and made available by GraphQL queries.
 
@@ -61,7 +71,7 @@ docker run -it -e VARIABLE_NAME=value quay.io/kiegroup/kogito-jobs-service-allin
 
 [NOTE]
 ====
-In general, this is the recommended approach when you execute the Job Service in kubernetes.
+This is the recommended approach when you execute the Job Service in kubernetes.
 The timeouts showcase example xref:use-cases/timeout-showcase-example.adoc#execute-quarkus-project-standalone-services[Quarkus Workflow Project with standalone services] contains an example of this configuration, https://github.com/kiegroup/kogito-examples/blob/main/serverless-workflow-examples/serverless-workflow-timeouts-showcase-extended/kubernetes/jobs-service-postgresql.yml#L65[see].
 ====
 
@@ -99,7 +109,7 @@ xref:persistence/postgresql-flyway-migration.adoc#manually-executing-scripts[Man
 
 To configure the PostgreSQL persistence you must provide these configurations:
 
-.List of parameters for the PostgreSQL configuration
+.List of parameters for the PostgreSQL persistence
 [cols="2,1,1"]
 |===
 |Variable | Description| Example value
@@ -133,7 +143,17 @@ In your local environment you might have to change some of these values to point
 === Ephemeral
 
 The Ephemeral persistence mechanism is based on an embedded PostgresSQL database and does not require any external configuration. However, the database is recreated on each service restart, and thus, it must be used only for testing purposes.
-If the image is started by not configuring any persistence mechanism, the Ephemeral will be defaulted.
+
+.List of parameters for the Ephemeral persistence
+[cols="2,1,1"]
+|===
+|Variable | Description| Example value
+
+|JOBS_SERVICE_PERSISTENCE
+|Configure the persistence mechanism that must be used.
+|ephemeral
+
+|===
 
 [NOTE]
 ====
@@ -288,3 +308,4 @@ spec:
 [#kafka-messaging]
 === Kafka messaging
 
+TODO, Continue here on Monday
