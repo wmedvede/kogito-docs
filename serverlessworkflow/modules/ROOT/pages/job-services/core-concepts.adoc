@@ -22,7 +22,7 @@ To schedule the execution of a task you must create a Job, that is configured wi
 
 image::job-services/Job-Service-Generic-Diagram.png[]
 
-
+[#integration-with-the-workflows]
 == Integration with the Workflows
 
 In the context of the {product_name}s, the Job Service is responsible for controlling the execution of the time-triggered actions. And thus, all the time-base states that you can use in a workflow, are handled by the interaction between the workflow and the Job Service.
@@ -218,7 +218,7 @@ This API is useful in deployment scenarios where you want to use an event based 
 === Knative eventing
 
 By default, the Job Service Eventing API, is prepared to work in a link:{knative_eventing_url}[knative eventing] system. This means that by adding no additional configurations parameters, it'll be able to receive cloud events via the link:{knative_eventing_url}[knative eventing] system to manage the jobs.
-However, you must still configure your link:{knative_eventing_url}[knative eventing] environment to ensure these events are properly delivered to the Job Service, see <<knative-eventing-supporting-resources, knative eventing supporting resources>>.
+However, you must still prepare your link:{knative_eventing_url}[knative eventing] environment to ensure these events are properly delivered to the Job Service, see <<knative-eventing-supporting-resources, knative eventing supporting resources>>.
 
 Finally, the only configuration parameter that you must set, when needed, is to enable the propagation of the Job Status Change events, for example, if you want to register these events in the Data Index Service.
 
@@ -227,16 +227,17 @@ Finally, the only configuration parameter that you must set, when needed, is to 
 |===
 |Variable | Description| Default value
 
-|KOGITO_JOBS_SERVICE_KNATIVE_EVENTS
-| true to establish if the Job Status Change events must be propagated.
-| false
+|KOGITO_JOBS_SERVICE_HTTP_JOB_STATUS_CHANGE_EVENTS
+| `true` to establish if the Job Status Change events must be propagated. If you set this value to `true` you must be sure that the <<knative-eventing-supporting-resources-sink-binding, sink binding>> was created.
+| `false`
 
 |===
 
 [#knative-eventing-supporting-resources]
 ==== Knative eventing supporting resources
 
-To ensure the Job Service receives the knative events to manage the jobs, you must configure the two link:{knative_eventing_trigger_url}[triggers] shown in the diagram below. Additionally, if you have enabled the Job Status Change events propagation you must create the link:{knative_eventing_sink_binding_url}[sink binding].
+To ensure the Job Service receives the knative events to manage the jobs, you must create the <<knative-eventing-supporting-resources-trigger-create, create job events>> and <<knative-eventing-supporting-resources-trigger-delete, delete job events>> triggers shown in the diagram below.
+Additionally, if you have enabled the Job Status Change events propagation you must create the <<knative-eventing-supporting-resources-sink-binding, sink binding>>.
 
 .Knative eventing supporting resources
 image::job-services/Knative-Eventing-API-Resources.png[]
@@ -244,6 +245,7 @@ image::job-services/Knative-Eventing-API-Resources.png[]
 The following snippets shows an example on how you can configure these resources. Consider that these configurations might need to be adjusted in you local kubernetes cluster.
 Additionally, you can see this example xref:use-cases/timeout-showcase-example.adoc#execute-quarkus-project-standalone-services[Quarkus Workflow Project with standalone services].
 
+[#knative-eventing-supporting-resources-trigger-create]
 .Create Job event trigger configuration example
 [source,yaml]
 ----
@@ -264,6 +266,9 @@ spec:
     uri: /v2/jobs/events
 ----
 
+For more information about triggers link:{knative_eventing_trigger_url}[see].
+
+[#knative-eventing-supporting-resources-trigger-delete]
 .Delete Job event trigger configuration example
 [source,yaml]
 ----
@@ -284,6 +289,9 @@ spec:
     uri: /v2/jobs/events
 ----
 
+For more information about triggers link:{knative_eventing_trigger_url}[see].
+
+[#knative-eventing-supporting-resources-sink-binding]
 .Job Service sink binding configuration example
 [source, yaml]
 ----
@@ -306,6 +314,8 @@ spec:
         app.kubernetes.io/version: 2.0.0-SNAPSHOT
 ----
 
+For more information about sink bindings link:{knative_eventing_sink_binding_url}[see].
+
 [#kafka-messaging]
 === Kafka messaging
 
@@ -317,20 +327,24 @@ To enable the Job Service Eventing API via the Kafka messaging system you must p
 |Variable | Description| Default value
 
 |QUARKUS_PROFILE
-|Set the quarkus profile with the value `events_support` to enable the kafka messaging based Job Service Eventing API.
+|Set the quarkus profile with the value `kafka-events_support` to enable the kafka messaging based Job Service Eventing API.
 |By default the kafka eventing api is disabled.
+
+|KOGITO_JOBS_SERVICE_KAFKA_JOB_STATUS_CHANGE_EVENTS
+|`true` to establish if the Job Status Change events must be propagated.
+|`true` when the `kafka-events-support` profile is set.
 
 |KAFKA_BOOTSTRAP_SERVERS
 |A comma-separated list of host:port to use for establishing the initial connection to the Kafka cluster.
-|`localhost:9092` when the `events-support` profile is set.
+|`localhost:9092` when the `kafka-events-support` profile is set.
 
 |MP_MESSAGING_INCOMING_KOGITO_JOB_SERVICE_JOB_REQUEST_EVENTS_V2_TOPIC
 |Kafka topic for events API incoming events. I general you don't need to change this value.
-|`kogito-job-service-job-request-events-v2` when the `events_support` profile is set.
+|`kogito-job-service-job-request-events-v2` when the `kafka-events_support` profile is set.
 
 |MP_MESSAGING_OUTGOING_KOGITO_JOB_SERVICE_JOB_STATUS_EVENTS_TOPIC
 |Kafka topic for job status change outgoing events. I general you don't need to change this value.
-|`kogito-jobs-events` when the `events_support` profile is set.
+|`kogito-jobs-events` when the `kafka-events_support` profile is set.
 
 |===
 
