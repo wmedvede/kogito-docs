@@ -10,6 +10,7 @@
 :knative_eventing_trigger_url: https://knative.dev/docs/eventing/triggers/
 :knative_eventing_sink_binding_url: https://knative.dev/docs/eventing/sinks/#sink-parameter-example
 :quarkus_infinispan_client_reference_url: https://quarkus.io/guides/infinispan-client-reference
+:quarkus_kafka_url: https://quarkus.io/guides/kafka
 :quarkus_config_reference_url: https://quarkus.io/guides/config-reference
 
 The Job Service facilitates the scheduled execution of tasks in a cloud environment. These tasks are implemented by different independent services, and can be started by using any of the Job Service supported interaction modes, based on Http calls or Knative Events delivery.
@@ -204,7 +205,7 @@ To configure the Infinispan persistence you must provide these configurations:
 [NOTE]
 ====
 The Infinispan client configuration parameters that you must configure depends on your local Infinispan service.
-And thus, the table above shows only a sub-set of all the available options. To see the list of all the options supported by the quarkus infinispan client you must read the link:{quarkus_infinispan-client-reference_url}[Quarkus Infinispan Client Reference].
+And thus, the table above shows only a sub-set of all the available options. To see the list of all the options supported by the quarkus infinispan client you must read the link:{quarkus_infinispan_client_reference_url}[Quarkus Infinispan Client Reference].
 ====
 
 [#job-service-eventing-api]
@@ -308,4 +309,33 @@ spec:
 [#kafka-messaging]
 === Kafka messaging
 
-TODO, Continue here on Monday
+To enable the Job Service Eventing API via the Kafka messaging system you must provide these configurations:
+
+.List of parameters for the Kafka eventing configuration
+[cols="2,1,1"]
+|===
+|Variable | Description| Default value
+
+|QUARKUS_PROFILE
+|Set the quarkus profile with the value `events_support` to enable the kafka messaging based Job Service Eventing API.
+|By default the kafka eventing api is disabled.
+
+|KAFKA_BOOTSTRAP_SERVERS
+|A comma-separated list of host:port to use for establishing the initial connection to the Kafka cluster.
+|`localhost:9092` when the `events-support` profile is set.
+
+|MP_MESSAGING_INCOMING_KOGITO_JOB_SERVICE_JOB_REQUEST_EVENTS_V2_TOPIC
+|Kafka topic for events API incoming events. I general you don't need to change this value.
+|`kogito-job-service-job-request-events-v2` when the `events_support` profile is set.
+
+|MP_MESSAGING_OUTGOING_KOGITO_JOB_SERVICE_JOB_STATUS_EVENTS_TOPIC
+|Kafka topic for job status change outgoing events. I general you don't need to change this value.
+|`kogito-jobs-events` when the `events_support` profile is set.
+
+|===
+
+[NOTE]
+====
+Depending on your Kafka messaging system configuration you might need to apply additional Kafka configurations to connect to the Kafka broker, etc.
+To see the list of all the supported configurations you must read the link:{quarkus_kafka_url}[Quarkus Apache Kafka Reference Guide].
+====
