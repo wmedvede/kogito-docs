@@ -119,7 +119,24 @@ For example, the name `quarkus.datasource.jdbc.url` must be converted to `QUARKU
 [#job-service-global-configurations]
 == Global configurations
 
-Global configurations that affects the Job Service startup procedure, job executions, etc.
+Global configurations that affects the job execution retries, startup procedure, etc.
+
+[cols="30%,40%,15%,15%"]
+|===
+|Name |Description |Value |Default
+
+|`kogito.jobs-service.backoffRetryMillis`
+|Defines the retry back-off time in milliseconds between job execution attempts, in case the execution fails.
+|Long type
+|`1000`
+
+|`kogito.jobs-service.maxIntervalLimitToRetryMillis`
+|Defines the maximum interval in milliseconds when retrying to execute jobs, in case the execution fails
+|Long type
+|`60000`
+
+|===
+
 
 [#job-service-persistence]
 == Persistence
@@ -513,3 +530,30 @@ Using system properties with java like names::
 Depending on your Kafka messaging system configuration you might need to apply additional Kafka configurations to connect to the Kafka broker, etc.
 To see the list of all the supported configurations you must read the link:{quarkus_kafka_url}[Quarkus Apache Kafka Reference Guide].
 ====
+
+
+
+== Leader election
+
+Currently, the Job Service is a singleton service, and thus, just one active instance of the service can be scheduling and executing the jobs.
+
+To avoid issues when it is deployed in the cloud, where it is common to eventually have more than one instance deployed, the Job Service supports a leader instance election process.
+Only the instance that becomes the leader activates the external communication to receive and schedule jobs.
+
+All the instances that are not leaders, stay inactive in a kind of wait state and try to become the leader continuously.
+
+When a new instance of the service is started, it is not set as a leader at startup time but instead, it starts the process to become one.
+
+When an instance that is the leader for any issue stays unresponsive or is shut down, one of the other running instances becomes the leader.
+
+.Job Service leader election
+image::job-services/job-service-leader.png[]
+
+[NOTE]
+====
+This leader election mechanism uses the underlying persistence backend, which currently is only supported in the PostgreSQL implementation.
+====
+
+There is no need for any configuration to support this feature, the only requirement is to have the supported database with the data schema up-to-date as described in the <<job-service-postgresql>> section.
+
+In case the underlying persistence does not support this feature, you must guarantee that just one single instance of the Job Service is running at the same time.
