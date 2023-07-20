@@ -13,7 +13,7 @@
 :quarkus_kafka_url: https://quarkus.io/guides/kafka
 :quarkus_config_reference_url: https://quarkus.io/guides/config-reference
 
-The Job Service facilitates the scheduled execution of tasks in a cloud environment. These tasks are implemented by different independent services, and can be started by using any of the Job Service supported interaction modes, based on Http calls or Knative Events delivery.
+The Job Service facilitates the scheduled execution of tasks in a cloud environment. These tasks are implemented by independent services, and can be started by using any of the Job Service supported interaction modes, based on Http calls or Knative Events delivery.
 
 To schedule the execution of a task you must create a Job, that is configured with the following information:
 
@@ -31,11 +31,11 @@ For example, every time the workflow execution reaches a state with a configured
 
 image::job-services/Time-Based-States-And-Job-Service-Interaction.png[]
 
-To set up this integration you can use different the xref:job-services/quarkus-extensions.adoc#job-service-quarkus-extensions[communication alternatives], that must be configured by combining the Job Service and the Quarkus Workflow Project configurations.
+To set up this integration you can use different xref:job-services/quarkus-extensions.adoc#job-service-quarkus-extensions[communication alternatives], that must be configured by combining the Job Service and the Quarkus Workflow Project configurations.
 
 [NOTE]
 ====
-If the application is not configured to use the Job Service, all time-based actions will use an in-memory implementation of that service.
+If the project is not configured to use the Job Service, all time-based actions will use an in-memory implementation of that service.
 However, this setup must not be used in production, since every time the application is restarted, all the timers are lost.
 This last is not suited for serverless architectures, where the applications might scale to zero at any time, etc.
 ====
@@ -52,7 +52,7 @@ To execute the Job Service in your docker or kubernetes environment, you must us
 
 * link:{jobs_service_image_url}[kogito-jobs-service-allinone]
 
-In the next topics you can see the different configuration parameters that you must use, for example, to configure the persistence mechanism, the eventing system, etc.
+In the next topics you can see the different configuration parameters that you must use, for example, to configure the <<job-service-persistence,persistence mechanism>>, the <<job-service-eventing-api, eventing system>>, etc.
 More information on this image can be found link:{jobs_service_image_usage_url}[here].
 
 We recommend that you follow this procedure:
@@ -70,10 +70,10 @@ Finally, to run the image, you must use the <<exposed-environment-variables, env
 |===
 |Variable | Description
 
-|SCRIPT_DEBUG
+|`SCRIPT_DEBUG`
 |Enable debug level of the image and its operations.
 
-|JOBS_SERVICE_PERSISTENCE
+|`JOBS_SERVICE_PERSISTENCE`
 |Any of the following values:  `postgresql`, `ephemeral`, or `infinispan` to select the persistence mechanism to use, <<job-service-persistence, see>>.
 
 |===
@@ -121,22 +121,43 @@ For example, the name `quarkus.datasource.jdbc.url` must be converted to `QUARKU
 
 Global configurations that affects the job execution retries, startup procedure, etc.
 
-[cols="30%,40%,15%,15%"]
-|===
-|Name |Description |Value |Default
+[tabs]
+====
+Using environment variables::
++
 
-|`kogito.jobs-service.backoffRetryMillis`
-|Defines the retry back-off time in milliseconds between job execution attempts, in case the execution fails.
-|Long type
+[cols="2,1,1"]
+|===
+|Name |Description |Default
+
+|`KOGITO_JOBS_SERVICE_BACKOFFRETRYMILLIS`
+|A long value that defines the retry back-off time in milliseconds between job execution attempts, in case the execution fails.
 |`1000`
 
-|`kogito.jobs-service.maxIntervalLimitToRetryMillis`
-|Defines the maximum interval in milliseconds when retrying to execute jobs, in case the execution fails
-|Long type
+|`KOGITO_JOBS_SERVICE_MAXINTERVALLIMITTORETRYMILLIS`
+|A long value that defines the maximum interval in milliseconds when retrying to execute jobs, in case the execution fails.
 |`60000`
 
 |===
 
+Using system properties with java like names::
++
+
+[cols="2,1,1"]
+|===
+|Name |Description |Default
+
+|`kogito.jobs-service.backoffRetryMillis`
+|A long value that defines the retry back-off time in milliseconds between job execution attempts, in case the execution fails.
+|`1000`
+
+|`kogito.jobs-service.maxIntervalLimitToRetryMillis`
+|A long value that defines the maximum interval in milliseconds when retrying to execute jobs, in case the execution fails.
+|`60000`
+
+|===
+
+====
 
 [#job-service-persistence]
 == Persistence
@@ -165,25 +186,25 @@ Using environment variables::
 |===
 |Variable | Description| Example value
 
-|JOBS_SERVICE_PERSISTENCE
+|`JOBS_SERVICE_PERSISTENCE`
 |Configure the persistence mechanism that must be used.
-|postgresql
+|`postgresql`
 
-|QUARKUS_DATASOURCE_USERNAME
+|`QUARKUS_DATASOURCE_USERNAME`
 |Username to connect to the database.
-|postgres
+|`postgres`
 
-|QUARKUS_DATASOURCE_PASSWORD
+|`QUARKUS_DATASOURCE_PASSWORD`
 |Password to connect to the database
-|pass
+|`pass`
 
-|QUARKUS_DATASOURCE_JDBC_URL
+|`QUARKUS_DATASOURCE_JDBC_URL`
 | JDBC datasource url used by Flyway to connect to the database.
-|jdbc:postgresql://timeouts-showcase-database:5432/postgres?currentSchema=jobs-service
+|`jdbc:postgresql://timeouts-showcase-database:5432/postgres?currentSchema=jobs-service`
 
-|QUARKUS_DATASOURCE_REACTIVE_URL
-| Reactive datasource url used by the Job Service to connect to the database.
-|postgresql://timeouts-showcase-database:5432/postgres?search_path=jobs-service
+|`QUARKUS_DATASOURCE_REACTIVE_URL`
+|Reactive datasource url used by the Job Service to connect to the database.
+|`postgresql://timeouts-showcase-database:5432/postgres?search_path=jobs-service`
 
 |===
 
@@ -194,25 +215,25 @@ Using system properties with java like names::
 |===
 |Variable | Description| Example value
 
-|JOBS_SERVICE_PERSISTENCE
+|`JOBS_SERVICE_PERSISTENCE`
 |**Always an environment variable**
-|postgresql
+|`postgresql`
 
-|quarkus.datasource.username
+|`quarkus.datasource.username`
 |Username to connect to the database.
-|postgres
+|`postgres`
 
-|quarkus.datasource.password
+|`quarkus.datasource.password`
 |Password to connect to the database
-|pass
+|`pass`
 
-|quarkus.datasource.jdbc.url
+|`quarkus.datasource.jdbc.url`
 | JDBC datasource url used by Flyway to connect to the database.
-|jdbc:postgresql://timeouts-showcase-database:5432/postgres?currentSchema=jobs-service
+|`jdbc:postgresql://timeouts-showcase-database:5432/postgres?currentSchema=jobs-service`
 
-|quarkus.datasource.reactive.url
-| Reactive datasource url used by the Job Service to connect to the database.
-|postgresql://timeouts-showcase-database:5432/postgres?search_path=jobs-service
+|`quarkus.datasource.reactive.url`
+|Reactive datasource url used by the Job Service to connect to the database.
+|`postgresql://timeouts-showcase-database:5432/postgres?search_path=jobs-service`
 
 |===
 ====
@@ -229,9 +250,9 @@ The Ephemeral persistence mechanism is based on an embedded PostgresSQL database
 |===
 |Variable | Description| Example value
 
-|JOBS_SERVICE_PERSISTENCE
+|`JOBS_SERVICE_PERSISTENCE`
 |Configure the persistence mechanism that must be used.
-|ephemeral
+|`ephemeral`
 
 |===
 
@@ -254,31 +275,31 @@ Using environment variables::
 |===
 |Variable | Description| Example value
 
-|JOBS_SERVICE_PERSISTENCE
+|`JOBS_SERVICE_PERSISTENCE`
 |Configure the persistence mechanism that must be used.
-|infinispan
+|`infinispan`
 
-|QUARKUS_INFINISPAN_CLIENT_HOSTS
+|`QUARKUS_INFINISPAN_CLIENT_HOSTS`
 |Sets the host name/port to connect to. Each one is separated by a semicolon
-|host1:11222;host2:11222
+|`host1:11222;host2:11222`
 
-|QUARKUS_INFINISPAN_CLIENT_USE_AUTH
+|`QUARKUS_INFINISPAN_CLIENT_USE_AUTH`
 |Enables or disables authentication. Set it to `"false"` when connecting to an Infinispan Server without authentication. deployments
 |<<infinispan-client-config-note, see>>
 
-|QUARKUS_INFINISPAN_CLIENT_SASL_MECHANISM
+|`QUARKUS_INFINISPAN_CLIENT_SASL_MECHANISM`
 |Sets SASL mechanism used by authentication
 |<<infinispan-client-config-note, see>>
 
-|QUARKUS_INFINISPAN_CLIENT_AUTH_REALM
+|vQUARKUS_INFINISPAN_CLIENT_AUTH_REALM`
 |Sets realm used by authentication
 |<<infinispan-client-config-note, see>>
 
-|QUARKUS_INFINISPAN_CLIENT_USERNAME
+|`QUARKUS_INFINISPAN_CLIENT_USERNAME`
 |Sets username used by authentication.
 |<<infinispan-client-config-note, see>>
 
-|QUARKUS_INFINISPAN_CLIENT_PASSWORD
+|`QUARKUS_INFINISPAN_CLIENT_PASSWORD`
 |Sets password used by authentication.
 |<<infinispan-client-config-note, see>>
 
@@ -291,31 +312,31 @@ Using system properties with java like names::
 |===
 |Variable | Description| Example value
 
-|JOBS_SERVICE_PERSISTENCE
+|`JOBS_SERVICE_PERSISTENCE`
 |**Always an environment variable**
 |infinispan
 
-|quarkus.infinispan-client.hosts
+|`quarkus.infinispan-client.hosts`
 |Sets the host name/port to connect to. Each one is separated by a semicolon
-|host1:11222;host2:11222
+|`host1:11222;host2:11222`
 
-|quarkus.infinispan-client.use-auth
+|`quarkus.infinispan-client.use-auth`
 |Enables or disables authentication. Set it to `"false"` when connecting to an Infinispan Server without authentication. deployments
 |<<infinispan-client-config-note, see>>
 
-|quarkus.infinispan-client.sasl-mechanism
+|`quarkus.infinispan-client.sasl-mechanism`
 |Sets SASL mechanism used by authentication
 |<<infinispan-client-config-note, see>>
 
-|quarkus.infinispan-client.auth-realm
+|`quarkus.infinispan-client.auth-realm`
 |Sets realm used by authentication
 |<<infinispan-client-config-note, see>>
 
-|quarkus.infinispan-client.username
+|`quarkus.infinispan-client.username`
 |Sets username used by authentication.
 |<<infinispan-client-config-note, see>>
 
-|quarkus.infinispan-client.password
+|`quarkus.infinispan-client.password`
 |Sets password used by authentication.
 |<<infinispan-client-config-note, see>>
 
@@ -333,13 +354,13 @@ And thus, the table above shows only a sub-set of all the available options. To 
 [#job-service-eventing-api]
 == Eventing API
 
-In addition to the REST API, that is always available, the Job Service provides a Cloud Event based API that can be used to create and delete jobs.
+The Job Service provides a Cloud Event based API that can be used to create and delete jobs.
 This API is useful in deployment scenarios where you want to use an event based communication from the workflow runtime to the Job Service. For the transport of these events you can use the <<knative-eventing, knative eventing>> system or the <<kafka-messaging, kafka messaging>> system.
 
 [#knative-eventing]
 === Knative eventing
 
-By default, the Job Service Eventing API, is prepared to work in a link:{knative_eventing_url}[knative eventing] system. This means that by adding no additional configurations parameters, it'll be able to receive cloud events via the link:{knative_eventing_url}[knative eventing] system to manage the jobs.
+By default, the Job Service Eventing API is prepared to work in a link:{knative_eventing_url}[knative eventing] system. This means that by adding no additional configurations parameters, it'll be able to receive cloud events via the link:{knative_eventing_url}[knative eventing] system to manage the jobs.
 However, you must still prepare your link:{knative_eventing_url}[knative eventing] environment to ensure these events are properly delivered to the Job Service, see <<knative-eventing-supporting-resources, knative eventing supporting resources>>.
 
 Finally, the only configuration parameter that you must set, when needed, is to enable the propagation of the Job Status Change events, for example, if you want to register these events in the Data Index Service.
@@ -353,7 +374,7 @@ Using environment variables::
 |===
 |Variable | Description| Default value
 
-|KOGITO_JOBS_SERVICE_HTTP_JOB_STATUS_CHANGE_EVENTS
+|`KOGITO_JOBS_SERVICE_HTTP_JOB_STATUS_CHANGE_EVENTS`
 | `true` to establish if the Job Status Change events must be propagated. If you set this value to `true` you must be sure that the <<knative-eventing-supporting-resources-sink-binding, sink binding>> was created.
 | `false`
 
@@ -366,7 +387,7 @@ Using system properties with java like names::
 |===
 |Variable | Description| Default value
 
-|kogito.jobs-service.http.job-status-change-events
+|`kogito.jobs-service.http.job-status-change-events`
 | `true` to establish if the Job Status Change events must be propagated. If you set this value to `true` you must be sure that the <<knative-eventing-supporting-resources-sink-binding, sink binding>> was created.
 | `false`
 
@@ -385,7 +406,11 @@ Additionally, if you have enabled the Job Status Change events propagation you m
 image::job-services/Knative-Eventing-API-Resources.png[]
 
 The following snippets shows an example on how you can configure these resources. Consider that these configurations might need to be adjusted in you local kubernetes cluster.
-Additionally, you can see this example xref:use-cases/timeout-showcase-example.adoc#execute-quarkus-project-standalone-services[Quarkus Workflow Project with standalone services].
+
+[NOTE]
+====
+We recommend that you visit this example xref:use-cases/timeout-showcase-example.adoc#execute-quarkus-project-standalone-services[Quarkus Workflow Project with standalone services] to see a full setup of all these configurations.
+====
 
 [#knative-eventing-supporting-resources-trigger-create]
 .Create Job event trigger configuration example
@@ -472,23 +497,23 @@ Using environment variables::
 |===
 |Variable | Description| Default value
 
-|QUARKUS_PROFILE
+|`QUARKUS_PROFILE`
 |Set the quarkus profile with the value `kafka-events_support` to enable the kafka messaging based Job Service Eventing API.
 |By default the kafka eventing api is disabled.
 
-|KOGITO_JOBS_SERVICE_KAFKA_JOB_STATUS_CHANGE_EVENTS
+|`KOGITO_JOBS_SERVICE_KAFKA_JOB_STATUS_CHANGE_EVENTS`
 |`true` to establish if the Job Status Change events must be propagated.
 |`true` when the `kafka-events-support` profile is set.
 
-|KAFKA_BOOTSTRAP_SERVERS
+|`KAFKA_BOOTSTRAP_SERVERS`
 |A comma-separated list of host:port to use for establishing the initial connection to the Kafka cluster.
 |`localhost:9092` when the `kafka-events-support` profile is set.
 
-|MP_MESSAGING_INCOMING_KOGITO_JOB_SERVICE_JOB_REQUEST_EVENTS_V2_TOPIC
+|`MP_MESSAGING_INCOMING_KOGITO_JOB_SERVICE_JOB_REQUEST_EVENTS_V2_TOPIC`
 |Kafka topic for events API incoming events. I general you don't need to change this value.
 |`kogito-job-service-job-request-events-v2` when the `kafka-events_support` profile is set.
 
-|MP_MESSAGING_OUTGOING_KOGITO_JOB_SERVICE_JOB_STATUS_EVENTS_TOPIC
+|`MP_MESSAGING_OUTGOING_KOGITO_JOB_SERVICE_JOB_STATUS_EVENTS_TOPIC`
 |Kafka topic for job status change outgoing events. I general you don't need to change this value.
 |`kogito-jobs-events` when the `kafka-events_support` profile is set.
 
@@ -505,19 +530,19 @@ Using system properties with java like names::
 |Set the quarkus profile with the value `kafka-events_support` to enable the kafka messaging based Job Service Eventing API.
 |By default the kafka eventing api is disabled.
 
-|kogito.jobs-service.kafka.job-status-change-events
+|`kogito.jobs-service.kafka.job-status-change-events`
 |`true` to establish if the Job Status Change events must be propagated.
 |`true` when the `kafka-events-support` profile is set.
 
-|kafka.bootstrap.servers
+|`kafka.bootstrap.servers`
 |A comma-separated list of host:port to use for establishing the initial connection to the Kafka cluster.
 |`localhost:9092` when the `kafka-events-support` profile is set.
 
-|mp.messaging.incoming.kogito-job-service-job-request-events-v2.topic
+|`mp.messaging.incoming.kogito-job-service-job-request-events-v2.topic`
 |Kafka topic for events API incoming events. I general you don't need to change this value.
 |`kogito-job-service-job-request-events-v2` when the `kafka-events_support` profile is set.
 
-|mp.messaging.outgoing.kogito-job-service-job-status-events.topic
+|`mp.messaging.outgoing.kogito-job-service-job-status-events.topic`
 |Kafka topic for job status change outgoing events. I general you don't need to change this value.
 |`kogito-jobs-events` when the `kafka-events_support` profile is set.
 
