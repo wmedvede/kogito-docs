@@ -77,6 +77,7 @@
 *** xref:testing-and-troubleshooting/basic-integration-tests-with-restassured.adoc[Testing with REST Assured]
 * Persistence
 ** Quarkus
+*** xref:persistence/persistence-core-concepts.adoc[Core Concepts]
 *** xref:persistence/persistence-with-postgresql.adoc[PostgreSQL Configuration]
 *** xref:persistence/postgresql-flyway-migration.adoc[PostgreSQL Database Migration]
 *** xref:persistence/integration-tests-with-postgresql.adoc[Integration Tests with PostgreSQL]
