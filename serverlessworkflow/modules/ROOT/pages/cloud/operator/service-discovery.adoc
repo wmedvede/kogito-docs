@@ -1,0 +1,38 @@
+= Kubernetes service discovery in {operator_name}
+:compat-mode!:
+// Metadata:
+:description: Explain what is and how the service discovery works
+:keywords: kogito, workflow, quarkus, serverless, service-discovery, operator, enhanced-service-discovery
+// links
+:quarkus_issue_url: https://github.com/quarkusio/quarkus/issues/27457
+:kubernertes_sa_url: https://kubernetes.io/docs/concepts/security/service-accounts/
+
+include::../../../pages/_common-content/service-discovery/kubernetes-service-discovery-introduction.adoc[]
+
+
+[NOTE]
+====
+When you work with operator managed workflow deployments, there is no specific configuration required for the Kubernetes service discovery except by using the expected URI pattern.
+====
+
+[[kubernetes-service-discovery-resolution]]
+== Kubernetes service discovery resolution
+
+Based on the resource to be discovered, the Kubernetes service discovery follows specific paths as shown in the following figure:
+
+New drawing:
+
+
+[[example-kubernetes-service-discovery]]
+== Example of Kubernetes service discovery in {operator_name}
+
+The Kubernetes service discovery is performed by the operator at workflow deployment time.
+At this point, the operator scans the workflow configuration parameters in the associated xref:cloud/operator/configuring-workflows.adoc#example-of-workflow-config-map[ConfigMap], and searches for the Kubernetes URI pattern.
+If the URI pattern is found, the operator parses the URI, queries the Kubernetes API searching for the given resource, and overrides the given parameter with the resolved value.
+
+For example, consider a workflow that consumes a resource running on Kubernetes. This resource is a Knative service that exposes a function, which can be discovered using the following URI:
+
+[source, properties]
+----
+org.kie.kogito.sw.knative.service=${knative:services.v1/serverless-workflow-greeting-quarkus/greeting-quarkus-cli}
+----
