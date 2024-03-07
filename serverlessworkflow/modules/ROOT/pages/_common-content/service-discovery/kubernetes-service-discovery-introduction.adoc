@@ -13,7 +13,7 @@ kubernetes:<kind>.<version>.<group>/<namespace>/<resourceName>?<attributeName>=<
   scheme    kind   version   group   namespace   resourceName   additional resource attributes
             \____________________/                               \__________________________/
                      GVK                                           Supported values:
-                                                                   - port=<PROT_NAME>
+                                                                   - port=<PORT_NAME>
                                                                    - label-name1=label-value1
                                                                    - label-name2=label-value2
 ----
@@ -68,12 +68,12 @@ The label is defined with the following expression and in case of multiple label
 .Example label definition in URI
 [source,shell]
 ----
-kubernetes:pods.v1/<namespace>/<pod-name>tier=backend
+kubernetes:pods.v1/<namespace>/<pod-name>?tier=backend
 ----
 +
 Using the previous URI example, if there are more than one service exposing the given pod, the `tier=backend` label is used to filter the service. If the label does not exist, the first found service is used.
 
-* *Custom port*: The custom `port` is used to determine which port to use when multiple ports are configured in the target service or container. You can configure the port name to be queried using the following pattern:
+* *Custom port*: The custom `port` is used to determine which port to use when multiple ports are configured in the target service. You can configure the port name to be queried using the following pattern:
 +
 `port=<PORT_NAME>`
 --
