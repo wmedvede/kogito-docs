@@ -693,31 +693,36 @@ spec:
     dataIndex:
       enabled: true
       podTemplate:
-        replicas: 2 <1>
-        container: <2>
-          env: <3>
+        metadata:
+          labels: <1>
+            my-custom-label: my-custom-label-value
+        replicas: 2 <2>
+        container: <3>
+          env: <4>
             - name: ANY_ADVANCED_CONFIG_PROPERTY
               value: any-value
-          image: <4>
+          image: <5>
           resources:
             limits:
-              cpu: <5>
-              memory: <6>
+              cpu: <6>
+              memory: <7>
             requests:
-              cpu: <7>
-              memory: <8>
-        initContainers: <9>
+              cpu: <8>
+              memory: <9>
+        initContainers: <10>
 ----
 
-<1> Number of replicas. Defaults to 1. In the case of the jobService this value is always overridden to 1 by the operator, since that service is a singleton service.
-<2> Holds the particular configurations for the container that will execute the given supporting service.
-<3> Standard Kubernetes `env` configuration. This can be useful in cases where you need to fine tune any of the supporting services properties.
-<4> Standard Kubernetes `image` configuration. This can be useful in cases where you need to use an updated image for any of the supporting services.
-<5> Standard Kubernetes `cpu` limit configuration. Defaults to 200m.
-<6> Standard Kubernetes `memory` limit configuration. Defaults to 1Gi.
-<7> Standard Kubernetes `cpu` request configuration. Defaults to 100m.
-<8> Standard Kubernetes `memory` request configuration. Defaults to 1Gi.
-<9> Standard Kubernetes `initContainers` for the Pod that executes the supporting service.
+<1> User-defined labels automatically added to the deployment's pods. Useful for attaching custom metadata for tracking, policy enforcement, or third-party tool integration.
+Note: The following managed labels are reserved for platform operation and cannot be overridden: `app`, `app-namespace`, `app.kubernetes.io/component`, `app.kubernetes.io/instance`, `app.kubernetes.io/managed-by`, `app.kubernetes.io/name`, `app.kubernetes.io/part-of`, `app.kubernetes.io/version`, and `sonataflow.org/service`.
+<2> Number of replicas. Defaults to 1. In the case of the jobService this value is always overridden to 1 by the operator, since that service is a singleton service.
+<3> Holds the particular configurations for the container that will execute the given supporting service.
+<4> Standard Kubernetes `env` configuration. This can be useful in cases where you need to fine tune any of the supporting services properties.
+<5> Standard Kubernetes `image` configuration. This can be useful in cases where you need to use an updated image for any of the supporting services.
+<6> Standard Kubernetes `cpu` limit configuration. Defaults to 200m.
+<7> Standard Kubernetes `memory` limit configuration. Defaults to 1Gi.
+<8> Standard Kubernetes `cpu` request configuration. Defaults to 100m.
+<9> Standard Kubernetes `memory` request configuration. Defaults to 1Gi.
+<10> Standard Kubernetes `initContainers` for the Pod that executes the supporting service.
 
 [NOTE]
 ====
