@@ -2,16 +2,16 @@
 
 == Workflow identifiers
 
-To ensure proper functionality across all deployment variants, ranging from standalone Java workflow applications, to deployments managed by the {operator_name}, workflow identifiers must comply with RFC 1123 DNS label standards.
+To ensure proper functionality across all deployment variants, ranging from standalone Java workflow applications to deployments managed by {operator_name}, workflow identifiers must comply with RFC 1123 DNS label standards.
 
-In practice, this means that a workflow identifier must:
+In practice, a workflow identifier must:
 
 * Contain only:
 ** Lowercase letters (a–z)
 ** Digits (0–9)
 ** Hyphens (-)
-** Start with a lowercase letter or digit
-** End with a lowercase letter or digit
+* Start with a lowercase letter or digit
+* End with a lowercase letter or digit
 
 Identifiers that do not meet these requirements may lead to deployment or runtime issues.
 
@@ -26,7 +26,6 @@ customer-onboarding-flow
 flow-01
 ----
 
-
 .Invalid workflow identifiers
 [source,text]
 ----
@@ -36,12 +35,13 @@ order_processing (underscores not allowed)
 orderflow- (cannot end with a hyphen)
 ----
 
-Additionally, you must be sure that the workflow identifier is consistent across all the configurations used to build and deploy your workflow.
-This is particularly important when you work with {operator_name} driven deployments that uses the `gitops` profile.
+Additionally, ensure that the workflow identifier is consistent across all configurations used to build and deploy your workflow.
+This is particularly important when working with {operator_name} driven deployments that use the `gitops` profile.
 
-The following example shows a `yaml` workflow definition used to build a workflow image for a `gitops` profile deployment, and the corresponding `SonataFlow` CR configuration:
+The following example shows a `sw.yaml` workflow definition with a correctly configured `id`:
 
-.Example of a valid workflow `id` configuration for a yaml workflow definition
+[#workflow_identifiers]
+.Example of a valid workflow `id` configuration for a `sw.yaml` workflow definition
 [source,yaml]
 ----
 id: hello-world <1>
@@ -58,55 +58,341 @@ start: HelloWorld
 <4> Optional human-readable name.
 <5> Optional workflow description.
 
-[IMPORTANT]
-====
-Although the CNCF Serverless Workflow specification allows you to define a workflow version, and this attribute can be set in your workflow definition, the current {product_name} ecosystem does not support multiple versions of a workflow that share the same `id`.
-Be sure that you have read <<workflow_versioning, workflow version support and recommended versioning approach>>.
-====
-
-.Example of a valid workflow configuration for the `gitops` profile
-
-[source,yaml]
-----
-apiVersion: sonataflow.org/v1alpha08 <1>
-kind: SonataFlow
-metadata:
-  name: hello-world <2>
-  annotations:
-    sonataflow.org/name: Hello World <3>
-    sonataflow.org/description: An example workflow to say Hello World <4>
-    sonataflow.org/version: 1.0 <5>
-    sonataflow.org/profile: gitops
-spec:
-  podTemplate:
-    container:
-      image: "quay.io/my-workflows/hello-world:1.0"
-  flow:
-    start: HelloWorld
-    # rest of the workflow definition omitted to shorten the example
-----
-
-<1> The `SonataFlow` CR apiVersion infers the CNCF specification version. Currently, the only supported version is 0.8.0.
-<2> The `SonataFlow` CR Kubernetes `name` represents the workflow `id`, and must be configured with the same value used in the workflow `yaml` or `json` file.
-<3> Use the `sonataflow.org/name` annotation to configure the optional human-readable workflow name configured in the workflow `yaml` or `json` file if any.
-<4> Use the `sonataflow.org/description` annotation to configure the optional human-readable workflow description configured in the workflow `yaml` or `json` file if any.
-<5> The `sonataflow.org/version` annotation must be configured with the same value used as `version` in the workflow `yaml` or `json` file.
+The following sections explain how the workflow `id` relates to the `SonataFlow` CR's `metadata.name` and the `sonataflow.org/id` annotation for each versioning strategy.
 
 [#workflow_versioning]
-== Workflow version support and recommended versioning approach
+== Workflow versioning strategies
 
-Although the CNCF Serverless Workflow specification allows you to define a workflow version, and this attribute can be set in your workflow definition, the current {product_name} ecosystem does not support multiple versions of a workflow that share the same id.
+Starting with OSL 1.39.0, you can choose between two strategies to manage multiple versions of a workflow.
+In contrast, installations using OSL 1.38.0, or workflow images built with the 1.38.0 builder image, are restricted to <<isolated_deployment_approach, isolated workflow deployments>>
 
-Each workflow `id` must be unique across deployments, regardless of the configured `version`.
-Deploying multiple workflows with the same `id` and different versions is not supported and can result in unexpected behavior.
+[NOTE]
+====
+While the following sections show examples using the `gitops` profile, the same rules apply when working with the `preview` profile.
+====
 
-If you need to introduce a new version of an existing workflow, you must assign a new workflow `id`.
-Reusing the same `id` with different versions is not supported.
+[#isolated_deployment_approach]
+=== Isolated workflow deployments
 
-It is recommended to use a consistent naming convention that links related versions of the same workflow.
+In this strategy, each version is deployed as a completely independent workflow with its own unique workflow `id` and corresponding SonataFlow CR `metadata.name`.
+
+If you need to introduce a new version of an existing workflow, assign a new workflow `id`.
+The relationship between these separate deployments is maintained using a naming convention.
+
+It is recommended to use a consistent convention that links related versions of the same workflow.
 For example:
 
 * `hello-world-v1`, implements and deploys version 1.0
 * `hello-world-v2`, implements and deploys version 2.0
 
-This approach ensures clarity and avoids conflicts when managing multiple iterations of a workflow.
+This strategy maintains complete isolation between workflow versions. That isolation carries across the entire architecture; for example, in supporting service queries like Data Index, entries appear with different workflow ids.
+
+The following example shows how to create two different versions of a workflow using different workflow ids.
+
+Suppose you have two different `sw.yaml` files corresponding to version `1.0` and version `2.0` of the `Hello World` workflow, respectively:
+
+.sw.yaml file for version `1.0` of the workflow (isolated deployments)
+[source,yaml]
+----
+id: hello-world-v1 <1>
+version: "1.0" <2>
+specVersion: 0.8.0 <3>
+name: Hello World <4>
+description: Version 1.0 of an example workflow to say Hello World <4>
+start: HelloWorld <4>
+  # rest of the workflow definition according to version 1.0
+----
+<1> In this strategy, the workflow `id: hello-world-v1` must be unique across versions.
+<2> Version `1.0` of the workflow.
+<3> The Serverless Workflow specification version.
+<4> All remaining configurations belong to version `1.0` of the workflow.
+
+Given this definition, assume the generated image is `quay.io/my-workflows/hello-world:1.0`.
+
+.sw.yaml file for version `2.0` of the workflow (isolated deployments)
+[source,yaml]
+----
+id: hello-world-v2 <1>
+version: "2.0" <2>
+specVersion: 0.8.0 <3>
+name: Hello World <4>
+description: Version 2.0 of an example workflow to say Hello World <4>
+start: HelloWorld <4>
+  # rest of the workflow definition according to version 2.0
+----
+<1> In this strategy, the workflow `id: hello-world-v2` must be unique across versions.
+<2> Version `2.0` of the workflow.
+<3> The Serverless Workflow specification version.
+<4> All remaining configurations belong to version `2.0` of the workflow.
+
+Given this definition, assume the generated image is `quay.io/my-workflows/hello-world:2.0`.
+
+[IMPORTANT]
+====
+Build a separate container image for each workflow version.
+====
+
+Finally, generate the following `SonataFlow` CRs for each version:
+
+.`SonataFlow` CR for version `1.0` of the workflow (isolated deployments)
+[source,yaml]
+----
+apiVersion: sonataflow.org/v1alpha08
+kind: SonataFlow
+metadata:
+  name: hello-world-v1 <1>
+  annotations:
+    sonataflow.org/name: Hello World <2>
+    sonataflow.org/description: Version 1.0 of an example workflow to say Hello World <3>
+    sonataflow.org/version: 1.0 <4>
+    sonataflow.org/profile: gitops
+spec:
+  podTemplate:
+    container:
+      image: "quay.io/my-workflows/hello-world:1.0" <5>
+  flow:
+    start: HelloWorld <6>
+    # rest of the workflow definition corresponding to version 1.0
+----
+<1> The `SonataFlow` CR Kubernetes `metadata.name` must match the workflow `id` in the `sw.yaml` or `sw.json` file.
+<2> Use the `sonataflow.org/name` annotation to configure the optional human-readable workflow `name` specified in the workflow `sw.yaml` or `sw.json` file, if any.
+<3> Use the `sonataflow.org/description` annotation to configure the optional human-readable workflow `description` specified in the workflow `sw.yaml` or `sw.json` file, if any.
+<4> The `sonataflow.org/version` annotation must match the `version` defined in the workflow `sw.yaml` or `sw.json` file.
+<5> The image generated using the `sw.yaml` or `sw.json` file corresponding to version `1.0` of the workflow.
+<6> Rest of the workflow definition corresponding to version `1.0` of the workflow.
+
+.`SonataFlow` CR for version `2.0` of the workflow (isolated deployments)
+[source,yaml]
+----
+apiVersion: sonataflow.org/v1alpha08
+kind: SonataFlow
+metadata:
+  name: hello-world-v2 <1>
+  annotations:
+    sonataflow.org/name: Hello World <2>
+    sonataflow.org/description: Version 2.0 of an example workflow to say Hello World <3>
+    sonataflow.org/version: 2.0 <4>
+    sonataflow.org/profile: gitops
+spec:
+  podTemplate:
+    container:
+      image: "quay.io/my-workflows/hello-world:2.0" <5>
+  flow:
+    start: HelloWorld <6>
+    # rest of the workflow definition corresponding to version 2.0
+----
+<1> The `SonataFlow` CR Kubernetes `metadata.name` must match the workflow `id` in the `sw.yaml` or `sw.json` file.
+<2> Use the `sonataflow.org/name` annotation to configure the optional human-readable workflow `name` specified in the workflow `sw.yaml` or `sw.json` file, if any.
+<3> Use the `sonataflow.org/description` annotation to configure the optional human-readable workflow `description` specified in the workflow `sw.yaml` or `sw.json` file, if any.
+<4> The `sonataflow.org/version` annotation must match the `version` defined in the workflow `sw.yaml` or `sw.json` file.
+<5> The image generated using the `sw.yaml` or `sw.json` file corresponding to version `2.0` of the workflow.
+<6> Rest of the workflow definition corresponding to version `2.0` of the workflow.
+
+The following table summarizes the artifacts that you should generate to work with versions `1.0` and `2.0` of the example workflow in the `gitops` profile.
+
+[cols="2,1,2"]
+|===
+|Asset | Type | Description
+
+|`hello-world-v1.sw.yaml`
+|yaml/json
+|File containing the Serverless Workflow definition corresponding to the workflow with `id=hello-world-v1` and `version=1.0`.
+
+|`quay.io/my-workflows/hello-world:1.0`
+|Image
+|Image generated using the workflow definition in `hello-world-v1.sw.yaml`.
+
+|`hello-world-v1.yaml`
+|`SonataFlow` CR
+|The `SonataFlow` CR with `metadata.name=hello-world-v1` and `sonataflow.org/version=1.0` matching `id=hello-world-v1` and `version=1.0` in `hello-world-v1.sw.yaml`.
+
+|`hello-world-v2.sw.yaml`
+|yaml/json
+|File containing the Serverless Workflow definition corresponding to the workflow with `id=hello-world-v2` and `version=2.0`.
+
+|`quay.io/my-workflows/hello-world:2.0`
+|Image
+|Image generated using the workflow definition in `hello-world-v2.sw.yaml`.
+
+|`hello-world-v2.yaml`
+|`SonataFlow` CR
+|The `SonataFlow` CR with `metadata.name=hello-world-v2` and `sonataflow.org/version=2.0` matching `id=hello-world-v2` and `version=2.0` in `hello-world-v2.sw.yaml`.
+|===
+
+[IMPORTANT]
+====
+OSL 1.38.0 installations and images built with the 1.38.0 builder image can only use this strategy to create multiple workflow versions.
+====
+
+=== Logical workflow versioning
+
+Starting in OSL 1.39.0, enhancements to the workflow runtime engine enable multiple deployments to share the same logical workflow `id`.
+Under this strategy, supporting services like Data Index can group different versions under the same workflow lineage.
+
+[NOTE]
+====
+
+As part of these runtime updates, REST API endpoints now include the workflow version in their path. For example:
+
+* **OSL 1.38.0 endpoint format:** http://&lt;service-url&gt;/&lt;workflow-id&gt;.
+* **OSL 1.39.0+ endpoint format:** `http://<service-url>/<workflow-id>/<version>`.
+====
+
+The following example shows how to create two different versions of a workflow using the same `id`.
+
+Suppose you have two different `sw.yaml` files corresponding to version `1.0` and version `2.0` of the `hello-world` workflow, respectively:
+
+.sw.yaml file for version `1.0` of the workflow (logical versioning)
+[source,yaml]
+----
+id: hello-world <1>
+version: "1.0" <2>
+specVersion: 0.8.0 <3>
+name: Hello World <4>
+description: Version 1.0 of an example workflow to say Hello World <4>
+start: HelloWorld <4>
+  # rest of the workflow definition according to version 1.0
+----
+<1> In this strategy, the workflow `id: hello-world` must be shared across versions.
+<2> Version `1.0` of the workflow.
+<3> The Serverless Workflow specification version.
+<4> All remaining configurations belong to version `1.0` of the workflow.
+
+Given this definition, assume the generated image is `quay.io/my-workflows/hello-world:1.0`.
+
+.sw.yaml file for version `2.0` of the workflow (logical versioning)
+[source,yaml]
+----
+id: hello-world <1>
+version: "2.0" <2>
+specVersion: 0.8.0 <3>
+name: Hello World <4>
+description: Version 2.0 of an example workflow to say Hello World <4>
+start: HelloWorld <4>
+  # rest of the workflow definition according to version 2.0
+----
+<1> In this strategy, the workflow `id: hello-world` must be shared across versions.
+<2> Version `2.0` of the workflow.
+<3> The Serverless Workflow specification version.
+<4> All remaining configurations belong to version `2.0` of the workflow.
+
+Given this definition, assume the generated image is `quay.io/my-workflows/hello-world:2.0`.
+
+[IMPORTANT]
+====
+Build a separate container image for each workflow version.
+====
+
+Finally, generate the following `SonataFlow` CRs for each version:
+
+.`SonataFlow` CR for version `1.0` of the workflow (logical versioning)
+[source,yaml]
+----
+apiVersion: sonataflow.org/v1alpha08
+kind: SonataFlow
+metadata:
+  name: hello-world-v1 <1>
+  annotations:
+    sonataflow.org/id: hello-world <2>
+    sonataflow.org/name: Hello World <3>
+    sonataflow.org/description: Version 1.0 of an example workflow to say Hello World <4>
+    sonataflow.org/version: 1.0 <5>
+    sonataflow.org/profile: gitops
+spec:
+  podTemplate:
+    container:
+      image: "quay.io/my-workflows/hello-world:1.0" <6>
+  flow:
+    start: HelloWorld <7>
+    # rest of the workflow definition corresponding to version 1.0
+----
+<1> The `SonataFlow` CR Kubernetes `metadata.name` representing the workflow deployment of version `1.0`. In this strategy, it does not need to match the `id` in the `sw.yaml` or `sw.json` file.
+<2> The `sonataflow.org/id` annotation configures the `id` of the workflow to be deployed. This value must match the `id` specified in the workflow `sw.yaml` or `sw.json` file and remains the same across versions.
+<3> Use the `sonataflow.org/name` annotation to configure the optional human-readable workflow `name` specified in the workflow `sw.yaml` or `sw.json` file, if any.
+<4> Use the `sonataflow.org/description` annotation to configure the optional human-readable workflow `description` specified in the workflow `sw.yaml` or `sw.json` file, if any.
+<5> The `sonataflow.org/version` annotation must match the `version` defined in the workflow `sw.yaml` or `sw.json` file.
+<6> The image generated using the `sw.yaml` or `sw.json` file corresponding to version `1.0` of the workflow.
+<7> Rest of the workflow definition corresponding to version `1.0` of the workflow.
+
+[IMPORTANT]
+====
+Ensure that the `SonataFlow` CR is configured with `sonataflow.org/id` as the linking configuration between deployments.
+====
+
+.`SonataFlow` CR for version `2.0` of the workflow (logical versioning)
+[source,yaml]
+----
+apiVersion: sonataflow.org/v1alpha08
+kind: SonataFlow
+metadata:
+  name: hello-world-v2 <1>
+  annotations:
+    sonataflow.org/id: hello-world <2>
+    sonataflow.org/name: Hello World <3>
+    sonataflow.org/description: Version 2.0 of an example workflow to say Hello World <4>
+    sonataflow.org/version: 2.0 <5>
+    sonataflow.org/profile: gitops
+spec:
+  podTemplate:
+    container:
+      image: "quay.io/my-workflows/hello-world:2.0" <6>
+  flow:
+    start: HelloWorld <7>
+    # rest of the workflow definition corresponding to version 2.0
+----
+<1> The `SonataFlow` CR Kubernetes `metadata.name` representing the workflow deployment of version `2.0`. In this strategy, it does not need to match the `id` in the `sw.yaml` or `sw.json` file.
+<2> The `sonataflow.org/id` annotation configures the `id` of the workflow to be deployed. This value must match the `id` specified in the workflow `sw.yaml` or `sw.json` file and remains the same across versions.
+<3> Use the `sonataflow.org/name` annotation to configure the optional human-readable workflow `name` specified in the workflow `sw.yaml` or `sw.json` file, if any.
+<4> Use the `sonataflow.org/description` annotation to configure the optional human-readable workflow `description` specified in the workflow `sw.yaml` or `sw.json` file, if any.
+<5> The `sonataflow.org/version` annotation must match the `version` defined in the workflow `sw.yaml` or `sw.json` file.
+<6> The image generated using the `sw.yaml` or `sw.json` file corresponding to version `2.0` of the workflow.
+<7> Rest of the workflow definition corresponding to version `2.0` of the workflow.
+
+The following table summarizes the artifacts that you should generate to work with versions `1.0` and `2.0` of the example workflow in the `gitops` profile.
+
+[cols="2,1,2"]
+|===
+|Asset | Type | Description
+
+|`hello-world-v1.sw.yaml`
+|yaml/json
+|File containing the Serverless Workflow definition corresponding to the workflow with `id=hello-world` and `version=1.0`.
+
+|`quay.io/my-workflows/hello-world:1.0`
+|Image
+|Image generated using the workflow definition in `hello-world-v1.sw.yaml`.
+
+|`hello-world-v1.yaml`
+|`SonataFlow` CR
+|The `SonataFlow` CR with `metadata.name=hello-world-v1`, `sonataflow.org/id=hello-world`, and `sonataflow.org/version=1.0` matching `id=hello-world` and `version=1.0` in `hello-world-v1.sw.yaml`.
+
+|`hello-world-v2.sw.yaml`
+|yaml/json
+|File containing the Serverless Workflow definition corresponding to the workflow with `id=hello-world` and `version=2.0`.
+
+|`quay.io/my-workflows/hello-world:2.0`
+|Image
+|Image generated using the workflow definition in `hello-world-v2.sw.yaml`.
+
+|`hello-world-v2.yaml`
+|`SonataFlow` CR
+|The `SonataFlow` CR with `metadata.name=hello-world-v2`, `sonataflow.org/id=hello-world`, and `sonataflow.org/version=2.0` matching `id=hello-world` and `version=2.0` in `hello-world-v2.sw.yaml`.
+|===
+
+[WARNING]
+====
+**Avoid duplicate workflow ID and version deployments:**
+
+Never deploy multiple `SonataFlow` CRs that share the exact same workflow `id` and `version` pair (for example, creating two separate CRs named `hello-world-v1` and `hello-world-v1-secondary` that both specify `id: hello-world` and `version: 1.0`).
+
+Deploying duplicate ID and version combinations creates multiple Kubernetes services pointing to the same workflow definition, which leads to endpoint registration conflicts in supporting services such as Data Index and unpredictable runtime behavior.
+====
+
+=== Generated Kubernetes resources and configuration mapping
+
+Regardless of the selected versioning strategy, {operator_name} applies consistent resource generation and property mapping rules when provisioning underlying Kubernetes assets for a `SonataFlow` CR:
+
+* **Deployment and Service naming:** The operator automatically creates a `Deployment` and a `Service` for each `SonataFlow` CR. The names of these resources—and the resulting internal Kubernetes DNS URL for the service—are derived directly from the `SonataFlow` CR `metadata.name` in both strategies.
+* **Custom properties via ConfigMap:** To fine-tune or supply custom application properties to a workflow, create a `ConfigMap` named `<sonataflow-cr-name>-props`. For example, if a `SonataFlow` CR has `metadata.name: hello-world-v1`, creating a `ConfigMap` named `hello-world-v1-props` automatically maps its properties to the running workflow container.
+
+In summary, the underlying asset generation and configuration mapping mechanics remain identical across both strategies.
